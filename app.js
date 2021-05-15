@@ -1,55 +1,86 @@
 $(document).ready(function(){
-    let covidPerCountryRaw = {
-        'recovered' : undefined,
-        'deaths' : undefined,
-        'confirmed' : undefined,
-        'date' : undefined,
-    };
 
-    let covidPerCountry = [{}];
     let arrayAPICovidResults = [];
     getCountryAPI();
 
     let arrayAPICovidResultsDate = arrayAPICovidResults;
-    let dateFrom = $('.date-from').val();
-    let dateTo =  $('.date-to').val();
-
-    console.log(dateFrom);
-    console.log(dateTo);
 
     $('.date-from').change( async () => {
-        arrayAPICovidResultsDate;
-        let data = []
-
-        //await chargeChart(data);
+        let data = filterPerDate(arrayAPICovidResultsDate);
+        console.log(data);
+        await chargeChart(data);
     })
 
     $('.date-to').change( async () => {
-        arrayAPICovidResultsDate;
-        let data = []
-        //await chargeChart(data);
+        let data = filterPerDate(arrayAPICovidResultsDate);
+        console.log(data);
+        await chargeChart(data);
     })
-
 
     $("#countries").change( async function() {
         let country = $('#countries').find(":selected").text();
         let slug = $('#countries').val();
+        $("input[type=date]").val(""); 
         $('#country').html(`${country}`);
+
         await getCovidPerCountryData(slug, "recovered");
         await getCovidPerCountryData(slug, "deaths");
         await getCovidPerCountryData(slug, "confirmed");
-        console.log(arrayAPICovidResults);
-        
         if (arrayAPICovidResults.length > 0 ) {
             await chargeChart(arrayAPICovidResults);
         }else{
             noResult();
         }
-        
         arrayAPICovidResults = [];
 
     });
     
+    function filterPerDate(arrayData){
+        arrayFiltered = [];
+        arrayResults = [];
+        if ( $('.date-from').val() && $('.date-to').val()) {
+
+            arrayData.forEach( item => {
+                if ( item[2].date >= $('.date-from').val() && item[2].date <= $('.date-to').val() ) {
+                    arrayFiltered.push({ "recovered" : item[0].recovered });
+                    arrayFiltered.push({ "deaths" : item[1].deaths });
+                    arrayFiltered.push({ "date" : item[2].date });
+                    arrayFiltered.push({ "confirmed" : item[3].confirmed });
+                    arrayResults.push(arrayFiltered);
+                }
+                arrayFiltered = [];
+            });
+            return arrayResults;
+
+        }else if($('.date-from').val()){
+            arrayData.forEach( item => {
+                if ( item[2].date >= $('.date-from').val() ) {
+                    arrayFiltered.push({ "recovered" : item[0].recovered });
+                    arrayFiltered.push({ "deaths" : item[1].deaths });
+                    arrayFiltered.push({ "date" : item[2].date });
+                    arrayFiltered.push({ "confirmed" : item[3].confirmed });
+                    arrayResults.push(arrayFiltered);
+                }
+                arrayFiltered = [];
+            });
+            return arrayResults;
+        }else if ($('.date-to').val()) {
+            arrayData.forEach( item => {
+                if ( item[2].date <= $('.date-to').val() ) {
+                    arrayFiltered.push({ "recovered" : item[0].recovered });
+                    arrayFiltered.push({ "deaths" : item[1].deaths });
+                    arrayFiltered.push({ "date" : item[2].date });
+                    arrayFiltered.push({ "confirmed" : item[3].confirmed });
+                    arrayResults.push(arrayFiltered);
+                }
+                arrayFiltered = [];
+            });
+            return arrayResults;
+        }else{
+            return arrayData;
+        }
+    }
+
     function getCountryAPI(){
         $.get("https://api.covid19api.com/countries", response => {
             let countries = sortArray(response);
@@ -59,6 +90,7 @@ $(document).ready(function(){
             })
         })
     }
+
     async function getCovidPerCountryData(slug, status){
         const result = await $.ajax({
             method: "GET",
@@ -66,7 +98,7 @@ $(document).ready(function(){
             data: '',
             url: `https://api.covid19api.com/total/country/${slug}/status/${status}`,
         });
-        
+
         if ( result != null) {
             if (arrayAPICovidResults.length == 0) {
                 result.forEach(r => {
@@ -86,7 +118,6 @@ $(document).ready(function(){
         }else{
             console.log(slug);
         }
-        //fillcovidPerCountryRaw(result, status);
     }   
 
     function noResult(){
@@ -101,8 +132,6 @@ $(document).ready(function(){
         // Create chart instance
         var chart = am4core.create("chartdiv", am4charts.XYChart);
         
-        //
-        
         // Increase contrast by taking evey second color
         chart.colors.step = 2;
         
@@ -116,10 +145,6 @@ $(document).ready(function(){
         
         // Create series
         function createAxisAndSeries(field, name, opposite, bullet) {
-        //   var valueAxis = chart.yAxes.push(new am4charts.ValueAxis());
-        //   if(chart.yAxes.indexOf(valueAxis) != 0){
-        //       valueAxis.syncWithAxis = chart.yAxes.getIndex(0);
-        //   }
           
           var series = chart.series.push(new am4charts.LineSeries());
           series.dataFields.valueY = field;
@@ -187,7 +212,7 @@ $(document).ready(function(){
         
         // generate some random data, quite different range
         function generateChartData() {
-          let chartData = []
+          let chartData = [];
           arrayAPICovidResults.forEach( item => {
             date = item[2].date;
             confirmed = item[3].confirmed;
@@ -201,42 +226,8 @@ $(document).ready(function(){
                 recovered: recovered
             });
           });
-
-          console.log(chartData)
           return chartData;
         }
-    }
-    function fillcovidPerCountryRaw(data, status){
-        // console.log(data);
-        
-        for (let i = 0; i<100; i++){
-            //reset if already has values
-            // if ( covidPerCountry.lenght == 0) {
-            // }
-            var c = {
-                'recovered' : undefined,
-                'deaths' : undefined,
-                'confirmed' : undefined,
-                'date' : undefined,
-            };
-
-            switch (data[i].Status) {
-                case "recovered":
-                    c.recovered = data[i].Cases
-                    break;
-                case "confirmed":
-                    c.confirmed = data[i].Cases
-                    break;
-                case "deaths":
-                    c.deaths = data[i].Cases
-                    break;
-            }
-            //var result = Object.keys(c).map((key) => [String(key), c[key]]);
-            //console.log(c);
-            covidPerCountry.push(c);
-        }
-        console.log(covidPerCountry)
-        debugger;
     }
 
     function sortArray(myArray){
